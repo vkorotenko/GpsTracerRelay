@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "GpsTracerRelay": {
+      "commandName": "Project",
+      "commandLineArgs": "settings.xml track.xml"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Settings>
+	<Server org="194.67.92.9">194.67.92.9</Server>
+	<Port>5199</Port>
+	<Interval>30</Interval>
+	<Imei>123456789012346</Imei>
+</Settings>
