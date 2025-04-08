@@ -9,7 +9,7 @@ namespace GpsTracerRelay
 
             if (args.Length == 4)
             {
-                GenerateTracks(args[1], args[2] , args[3]);
+                await GenerateTracks(args[1], args[2] , args[3]);
                 return;
             }
 
@@ -38,9 +38,12 @@ namespace GpsTracerRelay
             }
         }
 
-        private static void GenerateTracks(string source, string dist, string interval)
+        private static async Task GenerateTracks(string source, string dist, string interval)
         {
-            throw new NotImplementedException();
+            var ser = new XmlSerializer(typeof(Tracks));
+            await using var stream = new FileStream(source, FileMode.Open);
+            var tracks = ser.Deserialize(stream) as Tracks;
+
         }
 
         private static Tracks GetTracks(string file)
