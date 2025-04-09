@@ -33,7 +33,9 @@ namespace GpsTracerRelay
             foreach (var point in tracks.Points)
             {
                 Console.WriteLine($"Tick: {point}");
-                await topin.GpsData(point);
+                await topin.Heartbeet();
+                await topin.GpsPosition(point);
+                await topin.GpsPositionOffline(point);
                 Thread.Sleep(setting.Interval * 1000);
             }
         }

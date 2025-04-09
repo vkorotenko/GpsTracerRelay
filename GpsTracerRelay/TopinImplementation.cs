@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -34,7 +35,10 @@ namespace GpsTracerRelay
             _client = new();
             _imei = imei;
         }
-
+        /// <summary>
+        /// Login package 0x01
+        /// </summary>
+        /// <returns></returns>
         public async Task<bool> Login()
         {
             // Start bit 2byte Reserved bit 1byte Protocol number 1byte IMEI 8byte Software version number 1byte Stop bit 2byte
@@ -57,7 +61,7 @@ namespace GpsTracerRelay
                 _stream = _client.GetStream();
                 await _stream.WriteAsync(rv, 0, rv.Length);
                 var buffer = new byte[1_024];
-                
+
                 var received = await _stream.ReadAsync(buffer);
 
 
@@ -82,11 +86,16 @@ namespace GpsTracerRelay
             {
                 ;
             }
-            
+
             return false;
         }
 
-        public async Task GpsData(Track track)
+
+        /// <summary>
+        /// Heartbeet 0x08
+        /// </summary>
+        /// <returns></returns>
+        public async Task Heartbeet()
         {
             byte[] rp = [0x01, 0x08];
             var rv = _header
@@ -95,23 +104,115 @@ namespace GpsTracerRelay
 
             await _stream.WriteAsync(rv, 0, rv.Length);
             Thread.Sleep(200);
-            //    7878 12 10 0a03170f3217 9c 026b3f3e 0c22ad65 1f 3460 0d0a
-            // Eg.7878 12 10 0A03170F3217 9C 026B3F3E 0C22AD65 1F 3460 0D0A
-            rp = [0x12, 0x10,
-            0x0A,0x03,0x17, 0x0F, 0x32, 0x17,
-            0x9C,
-            0x02,0x6b, 0x3F, 0x3E,
-            0x0C, 0x22, 0xAD, 0x65,
-            0x1F,
-            0x34, 0x60
+        }
+        /// <summary>
+        /// 0x10 GPS positioning data packet
+        /// </summary>
+        /// <param name="track"></param>
+        /// <returns></returns>
+        public async Task GpsPosition(Track track)
+        {
+            var dateTime = GetDateTime(DateTime.UtcNow);
+            byte[] body = [0x12, 0x10];
+            var lat = GetCoordinate(track.Lat);
+            var lon = GetCoordinate(track.Lon);
+            body = body
+                .Concat(dateTime)
+                .Concat<byte>([0x9C])
+                .Concat<byte>(lat)
+                .Concat<byte>(lon)
+                .Concat<byte>(GetSpeed(track))
+                .Concat<byte>([0x34, 0x60])
+                .ToArray();
+
+
+            var package = _header
+                .Concat(body)
+                .Concat(_footer).ToArray();
+
+            await _stream.WriteAsync(package, 0, package.Length);
+
+            if (_stream.DataAvailable)
+            {
+                var buffer = new byte[1_024];
+
+                var received = await _stream.ReadAsync(buffer);
+                Console.WriteLine("read data");
+            }
+            Thread.Sleep(200);
+        }
+
+        public static byte[] GetCoordinate(double val)
+        {
+            /*
+             *GPS latitude and longitude: 026B3F3E, longitude and latitude each occupy 4bytes, indicating positioning data,
+             * latitude and longitude conversion method is as below:
+               Convert the latitude and longitude values output by the gps module into fractions in minutes, 
+            then multiply the converted fractions by 30000 and convert the multiplied result to hexadecimal.
+                  For example, 22"32.7658', (22X60+32.7658)X30000=40582974, 
+            converted to hexadecimal 0x02 0x6B 0x3F 0x3E, 
+            22X60 is convert ° to '.
+            
+            
+            
+            22.327658
+             */
+
+
+            var nn = (int)val;
+            var nnl = (int) Math.Ceiling((val- nn) * 1000000);
+            var str = nnl.ToString();
+            str = str.Substring(0, str.Length - 4) + "." + str.Substring(str.Length-4);
+            var ci = new CultureInfo("en-US");
+            var rmk = double.Parse(str,ci);
+            var ds = 32.7658;
+            var res = ((nn * 60) + rmk) * 30_000;
+
+            
+            var bb = BitConverter.GetBytes((int)res).Reverse().ToArray();
+            var hs = Convert.ToHexString(bb);
+            return bb;
+        }
+        private byte[] GetSpeed(Track track)
+        {
+            return track.Speed > 0xff ? new byte[0xff] : new byte[(byte)track.Speed];
+        }
+        /// <summary>
+        /// Get bytes from datetime GMT0
+        /// </summary>
+        /// <param name="now"></param>
+        /// <returns></returns>
+        public static byte[] GetDateTime(DateTime now)
+        {
+            byte[] buff = [0x0A, 0x03, 0x17, 0x0F, 0x32, 0x17];
+            buff[5] = (byte)now.Second;
+            buff[4] = (byte)now.Minute;
+            buff[3] = (byte)now.Hour;
+            buff[2] = (byte)now.Day;
+            buff[1] = (byte)now.Month;
+            buff[0] = (byte)(now.Year - 2000);
+            return buff;
+        }
+        /// <summary>
+        /// 0x11 offline GPS positioning data package
+        /// </summary>
+        /// <param name="track"></param>
+        /// <returns></returns>
+        public async Task GpsPositionOffline(Track track)
+        {
+
+            byte[] rp = [0x12, 0x11,
+                0x0A,0x03,0x17, 0x0F, 0x32, 0x17,
+                0x9C,
+                0x02,0x6b, 0x3F, 0x3E,
+                0x0C, 0x22, 0xAD, 0x65,
+                0x1F,
+                0x34, 0x60
             ];
-            rv = _header
+            var rv = _header
                 .Concat(rp)
                 .Concat(_footer).ToArray();
 
-            await _stream.WriteAsync(rv, 0, rv.Length);
-            Thread.Sleep(200);
-            rv[3] = 0x11;
             await _stream.WriteAsync(rv, 0, rv.Length);
             if (_stream.DataAvailable)
             {
