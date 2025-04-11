@@ -30,12 +30,18 @@ namespace GpsTracerRelay
             var tracks = GetTracks(args[1]);
             var topin = new TopinImplementation(setting.Server, setting.Port, setting.Imei);
             var t = await topin.Login();
+            await topin.Heartbeet();
+            await topin.Heartbeet();
+            await topin.Heartbeet();
+            await topin.Heartbeet();
             foreach (var point in tracks.Points)
             {
                 Console.WriteLine($"Tick: {point}");
+
                 await topin.Heartbeet();
                 await topin.GpsPosition(point);
-                await topin.GpsPositionOffline(point);
+                // await topin.GpsPositionOffline(point);
+
                 Thread.Sleep(setting.Interval * 1000);
             }
         }

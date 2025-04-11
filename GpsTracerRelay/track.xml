@@ -1,14 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Tracks xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-	<Points>
-		<Track Lat="22.327658" Lon="58.61" Alt="10" Orientation="51" Speed="400" />
-		<Track Lat="56.47" Lon="58.62" Alt="11" Orientation="14" Speed="220.0" />
-		<Track Lat="56.46" Lon="58.63" Alt="12" Orientation="14" Speed="220.0" />
-		<Track Lat="56.45" Lon="58.64" Alt="13" Orientation="14" Speed="220.0" />
-		<Track Lat="56.44" Lon="58.65" Alt="14" Orientation="14" Speed="220.0" />
-		<Track Lat="56.43" Lon="58.66" Alt="15" Orientation="14" Speed="220.0" />
-		<Track Lat="56.42" Lon="58.67" Alt="16" Orientation="14" Speed="220.0" />
-		<Track Lat="56.41" Lon="58.68" Alt="17" Orientation="14" Speed="220.0" />
-		<Track Lat="56.40" Lon="58.69" Alt="18" Orientation="14" Speed="220.0" />
+	<Points>		
+		<Track Lat="51.327103" Lon="37.765279" Alt="10" Orientation="51" Speed="400" />				
+		<Track Lat="51.33241" Lon="37.77503" Alt="10" Orientation="51" Speed="400" />				
 	</Points>
 </Tracks>

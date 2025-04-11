@@ -116,16 +116,30 @@ namespace GpsTracerRelay
             byte[] body = [0x12, 0x10];
             var lat = GetCoordinate(track.Lat);
             var lon = GetCoordinate(track.Lon);
+            var speed = GetSpeed(track);
+
+            // Lat="51°19'44.4N" Lon="37°46'06.0E"
+            /*
+             *
+             *Latitude: 54.158950 / N 54° 9' 32.221''
+               Longitude: 37.594726 / E 37° 35' 41.015''
+             */
+
+            var crt = EncodeGpsStatus(track.Lat > 0, track.Lon < 0, true, track.Orientation);
+            
             body = body
                 .Concat(dateTime)
                 .Concat<byte>([0x9C])
                 .Concat<byte>(lat)
                 .Concat<byte>(lon)
-                .Concat<byte>(GetSpeed(track))
-                .Concat<byte>([0x34, 0x60])
+                .Concat<byte>(speed)
+                .Concat<byte>(crt)
                 .ToArray();
 
 
+            
+
+            var bt = Convert.ToHexString(body);
             var package = _header
                 .Concat(body)
                 .Concat(_footer).ToArray();
@@ -153,29 +167,23 @@ namespace GpsTracerRelay
             converted to hexadecimal 0x02 0x6B 0x3F 0x3E, 
             22X60 is convert ° to '.
             
-            
+            // Lat="51°19'44.4N" Lon="37°46'06.0E"
             
             22.327658
+            <Track Lat="51.327103" Lon="37.765279" Alt="10" Orientation="51" Speed="400" />				
              */
-
-
-            var nn = (int)val;
-            var nnl = (int) Math.Ceiling((val- nn) * 1000000);
-            var str = nnl.ToString();
-            str = str.Substring(0, str.Length - 4) + "." + str.Substring(str.Length-4);
-            var ci = new CultureInfo("en-US");
-            var rmk = double.Parse(str,ci);
-            var ds = 32.7658;
-            var res = ((nn * 60) + rmk) * 30_000;
-
-            
+            // 
+            int degrees = (int)val;
+            double remaining = (val - degrees) * 60;
+            var tm = (degrees * 60 + remaining) * 30000;
+            var res = (int)tm;
             var bb = BitConverter.GetBytes((int)res).Reverse().ToArray();
             var hs = Convert.ToHexString(bb);
             return bb;
         }
         private byte[] GetSpeed(Track track)
         {
-            return track.Speed > 0xff ? new byte[0xff] : new byte[(byte)track.Speed];
+            return track.Speed > 0xff ? [0xff] : [(byte)track.Speed];
         }
         /// <summary>
         /// Get bytes from datetime GMT0
@@ -244,6 +252,34 @@ namespace GpsTracerRelay
             }
 
             return bcd;
+        }
+
+
+        public static byte[] EncodeGpsStatus(bool isNorth, bool isWest, bool isPositioned, int heading)
+        {
+            // Validate heading (0-360)
+            if (heading < 0 || heading > 360)
+                throw new ArgumentException("Heading must be between 0 and 360 degrees.");
+
+            // Scale heading to 10 bits (0-1023)
+            var headingScaled = (int)((heading / 360.0) * 1024) & 0x3FF;
+
+            // Construct Byte 1 (bits: 000 GPS EW NS HH)
+
+            
+            var byte1 = (byte)(
+                (0 << 7) | (0 << 6) | (0 << 5) |       // Empty bits (7,6,5)
+                ((isPositioned ? 1 : 0) << 4) |         // GPS status (bit 4)
+                ((isWest ? 1 : 0) << 3) |               // East/West (bit 3)
+                ((isNorth ? 1 : 0) << 2) |              // North/South (bit 2)
+                ((headingScaled >> 8) & 0x03)           // First 2 heading bits (bits 1,0)
+            );
+            var yourByteString = Convert.ToString(byte1, 2).PadLeft(8, '0');
+
+            // Byte 2: Last 8 bits of heading
+            var byte2 = (byte)(headingScaled & 0xFF);
+
+            return new byte[] { byte1, byte2 };
         }
     }
 }
